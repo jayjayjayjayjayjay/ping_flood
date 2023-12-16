@@ -4,21 +4,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#include "main.h"
 
-#define ECHO_REQUEST_HEADER_BIT = 8;
 
 
 //position in header
-#define VERSION_INDEX 0
-#define TOS_INDEX 1
-#define LENGTH_INDEX 2
-#define IDENTIFICATION_INDEX 4
-#define FLAGS_AND_OFFSETS_INDEX 5
-#define TTL_INDEX 8
-#define PROTOCOL_INDEX  9
-#define HEADER_CHECKSUM_INDEX  10
-#define SOURCE_IP_INDEX 12
-#define DESTINATION_IP_INDEX 16
 //#define DESTINATION_IP 192.168.20.1
 //#define SOURCD_IP 192.168.20.16
 
@@ -37,9 +27,19 @@
 //icmp_header = b'\x08\x00\xe5\xca' # Type of message, Code | Checksum
 //icmp_header += b'\x12\x34\x00\x01' # Identifier | Sequence Number`k_
 
+void u32_to_bytes(uint8_t * bytes,uint32_t value){
+		bytes[0] = value >> 24;
+		bytes[1] = value >>  16;
+		bytes[2] = value >>  8;
+		bytes[3] = value;
+
+}
 bool create_packet_buffer(uint8_t * buffer){
-		uint32_t DESTINATION_IP = inet_addr("127.0.0.1");
-		uint32_t SOURCE_IP = inet_addr("192.168.20.16");
+		uint32_t DESTINATION_IP = htonl(inet_addr("192.168.20.1"));
+		uint32_t SOURCE_IP = htonl(inet_addr("192.168.20.16"));
+		uint8_t dest_ip_buffer[4],source_ip_buffer[4]; 
+		u32_to_bytes(&dest_ip_buffer,DESTINATION_IP);
+		u32_to_bytes(&source_ip_buffer,SOURCE_IP);
 		buffer[VERSION_INDEX]= 0x45;
 		buffer[LENGTH_INDEX+1]= 0x1c;
 		buffer[IDENTIFICATION_INDEX]= 0xab;
@@ -47,24 +47,35 @@ bool create_packet_buffer(uint8_t * buffer){
 		buffer[TTL_INDEX]= 0x40;
 		buffer[PROTOCOL_INDEX]= 0x01;
 		//buffer[HEADER_CHECKSUM_INDEX] =  checksum(buffer,10);
-		buffer[SOURCE_IP_INDEX] = SOURCE_IP;
-		buffer[DESTINATION_IP_INDEX] = DESTINATION_IP;
-
-
-
+		memcpy(&buffer[SOURCE_IP_INDEX],&source_ip_buffer,4);
+		memcpy(&buffer[DESTINATION_IP_INDEX],&dest_ip_buffer,4);
 }
 
 int main(){
-uint32_t DESTINATION_IP = inet_addr("127.0.0.1");
-uint32_t SOURCE_IP = inet_addr("192.168.20.16");
+uint32_t DESTINATION_IP =inet_addr("192.168.20.6");// ||htons(inet_addr("192.168.20.1")) << 16 ;
+uint32_t SOURCE_IP = htonl(inet_addr("192.168.20.16"));
+uint8_t dest_ip_buffer[4],source_ip_buffer[4],dest_reverse; 
+u32_to_bytes(&dest_ip_buffer,DESTINATION_IP);
+u32_to_bytes(&source_ip_buffer,SOURCE_IP);
 printf("ip:%d",DESTINATION_IP);
 uint16_t port = 0;
 sa_family_t net_type = AF_INET;
-struct in_addr destination_ip_addr;
-destination_ip_addr.s_addr = DESTINATION_IP;
+//struct in_addr destination_ip_addr;
+//destination_ip_addr.s_addr = DESTINATION_IP;
 //rename to something better for var
-struct sockaddr serv_addr;
-serv_addr.sa_family = AF_INET;
+struct sockaddr_in serv_addr;
+serv_addr.sin_family = AF_INET;
+serv_addr.sin_addr.s_addr = DESTINATION_IP;
+//memcpy(&serv_addr.sa_data,&dest_ip_buffer,4 );
+printf("\n");
+//serv_addr.sa_data = dest_ip_buffer;
+//serv_addr.sa_data[0]=4;
+for (int i = 0; i < 4; i++){
+//		printf("\nSERV:%u",serv_addr.sa_data[i]);
+		printf("\nDEST:%u",dest_ip_buffer[i]);
+
+}// printf("\n");
+
 //strcpy(serv_addr.,"127.0.0.1");
 //serv_addr.sin_port = htons(port);
 //struct sockaddr_in {     
@@ -78,23 +89,27 @@ serv_addr.sa_family = AF_INET;
 //}
 uint8_t buffer[40];
 create_packet_buffer(&buffer);
-for (int i = 0; i < 12; i++){
-printf("%u\n",buffer[i]);
+for (int i = 0; i < 20; i++){
+printf("%x\n",buffer[i]);
 
 }
 int sockfd = socket(AF_INET,SOCK_RAW,IPPROTO_ICMP); //ICMP=1 in /etc/sockets
 if (sockfd < 0){
 printf("Socket Error:%d:%d\n",sockfd,errno);
 }
-//int send_status = sendto(sockfd,&buffer,sizeof(buffer),0,(struct sockaddr*)&serv_addr,sizeof(serv_addr));
-//if (send_status < 0){
-//		printf("Error with Sending to Socket:%d:%d\n",send_status,errno);
 
-//}
+printf("size: %u",sizeof(serv_addr));
+int send_status = -2;
+send_status = sendto(sockfd,&buffer,sizeof(buffer),0,(struct sockaddr*)&serv_addr,32);
 
 
-//bool send_status = send(status,buffer,buffer_length,NULL);
+//bool send_status = send(sockfd,buffer,sizeof(buffer),NULL);
+if (send_status < 0){
+		printf("Error with Sending to Socket:%d:%d\n",send_status,errno);
 
+}
+
+return 1;
 
 
 }

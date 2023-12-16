@@ -1,7 +1,18 @@
-#ifndef main 
-#define main
+#ifndef MAIN 
+#define MAIN 
 #define ICMP_v4_INDEX = 4
 
+#define ECHO_REQUEST_HEADER_BIT = 8;
 
+#define VERSION_INDEX 0
+#define TOS_INDEX 1
+#define LENGTH_INDEX 2
+#define IDENTIFICATION_INDEX 4
+#define FLAGS_AND_OFFSETS_INDEX 5
+#define TTL_INDEX 8
+#define PROTOCOL_INDEX  9
+#define HEADER_CHECKSUM_INDEX  10
+#define SOURCE_IP_INDEX 12
+#define DESTINATION_IP_INDEX 16
 
 #endif
