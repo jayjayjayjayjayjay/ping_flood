@@ -26,6 +26,42 @@
 
 //icmp_header = b'\x08\x00\xe5\xca' # Type of message, Code | Checksum
 //icmp_header += b'\x12\x34\x00\x01' # Identifier | Sequence Number`k_
+uint16_t get_checksum(uint8_t * buffer){
+		return 0xffff - buffer[ICMP_CODE_INDEX] - buffer[ICMP_TYPE_INDEX];// - buffer[IDENTIFICATION_INDEX];//flags offsets left out as 0
+
+
+
+}
+uint16_t calculate_checksum(unsigned char* buffer, int bytes)
+{
+    uint32_t checksum = 0;
+    unsigned char* end = buffer + bytes;
+
+    // odd bytes add last byte and reset end
+    if (bytes % 2 == 1) {
+        end = buffer + bytes - 1;
+        checksum += (*end) << 8;
+    }
+
+    // add words of two bytes, one by one
+    while (buffer < end) {
+        checksum += buffer[0] << 8;
+        checksum += buffer[1];
+        buffer += 2;
+    }
+
+    // add carry if any
+    uint32_t carray = checksum >> 16;
+    while (carray) {
+        checksum = (checksum & 0xffff) + carray;
+        carray = checksum >> 16;
+    }
+
+    // negate it
+    checksum = ~checksum;
+
+    return checksum & 0xffff;
+}
 
 void u32_to_bytes(uint8_t * bytes,uint32_t value){
 		bytes[0] = value >> 24;
@@ -34,26 +70,33 @@ void u32_to_bytes(uint8_t * bytes,uint32_t value){
 		bytes[3] = value;
 
 }
-bool create_packet_buffer(uint8_t * buffer){
+bool create_packet_buffer(uint8_t * buffer,int buffer_size){
 		uint32_t DESTINATION_IP = htonl(inet_addr("192.168.20.1"));
 		uint32_t SOURCE_IP = htonl(inet_addr("192.168.20.16"));
 		uint8_t dest_ip_buffer[4],source_ip_buffer[4]; 
 		u32_to_bytes(&dest_ip_buffer,DESTINATION_IP);
 		u32_to_bytes(&source_ip_buffer,SOURCE_IP);
+		/*
 		buffer[VERSION_INDEX]= 0x45;
 		buffer[LENGTH_INDEX+1]= 0x1c;
 		buffer[IDENTIFICATION_INDEX]= 0xab;
 		buffer[FLAGS_AND_OFFSETS_INDEX]= 0xcd;
 		buffer[TTL_INDEX]= 0x40;
 		buffer[PROTOCOL_INDEX]= 0x01;
+		*/
+		buffer[ICMP_TYPE_INDEX]=0x08;
+		buffer[ICMP_CODE_INDEX]=0x00;
+		buffer[ICMP_CHECKSUM_INDEX] = calculate_checksum(buffer,buffer_size) >> 8;
+		buffer[ICMP_CHECKSUM_INDEX +1] = calculate_checksum(buffer,buffer_size);
+		//printf("buffer val:%u", get_checksum(buffer));
 		//buffer[HEADER_CHECKSUM_INDEX] =  checksum(buffer,10);
-		memcpy(&buffer[SOURCE_IP_INDEX],&source_ip_buffer,4);
-		memcpy(&buffer[DESTINATION_IP_INDEX],&dest_ip_buffer,4);
+//		memcpy(&buffer[SOURCE_IP_INDEX],&source_ip_buffer,4);
+//		memcpy(&buffer[DESTINATION_IP_INDEX],&dest_ip_buffer,4);
 }
 
 int main(){
-uint32_t DESTINATION_IP =inet_addr("192.168.20.6");// ||htons(inet_addr("192.168.20.1")) << 16 ;
-uint32_t SOURCE_IP = htonl(inet_addr("192.168.20.16"));
+uint32_t DESTINATION_IP =inet_addr("192.168.20.1");// ||htons(inet_addr("192.168.20.1")) << 16 ;
+uint32_t SOURCE_IP = htonl(inet_addr("192.168.20.1"));
 uint8_t dest_ip_buffer[4],source_ip_buffer[4],dest_reverse; 
 u32_to_bytes(&dest_ip_buffer,DESTINATION_IP);
 u32_to_bytes(&source_ip_buffer,SOURCE_IP);
@@ -70,11 +113,11 @@ serv_addr.sin_addr.s_addr = DESTINATION_IP;
 printf("\n");
 //serv_addr.sa_data = dest_ip_buffer;
 //serv_addr.sa_data[0]=4;
-for (int i = 0; i < 4; i++){
+//for (int i = 0; i < 4; i++){
 //		printf("\nSERV:%u",serv_addr.sa_data[i]);
-		printf("\nDEST:%u",dest_ip_buffer[i]);
+//		printf("\nDEST:%u",dest_ip_buffer[i]);
 
-}// printf("\n");
+//}// printf("\n");
 
 //strcpy(serv_addr.,"127.0.0.1");
 //serv_addr.sin_port = htons(port);
@@ -87,10 +130,10 @@ for (int i = 0; i < 4; i++){
 //if (status == -1){
 //printf("Failed Creating Socket:%d",status);
 //}
-uint8_t buffer[40];
-create_packet_buffer(&buffer);
-for (int i = 0; i < 20; i++){
-printf("%x\n",buffer[i]);
+uint8_t buffer[8],empty[60];
+create_packet_buffer(&buffer,sizeof(buffer));
+for (uint8_t i = 0; i < 40; i++){
+printf("%x:%x\n",i,buffer[i]);
 
 }
 int sockfd = socket(AF_INET,SOCK_RAW,IPPROTO_ICMP); //ICMP=1 in /etc/sockets
@@ -100,7 +143,8 @@ printf("Socket Error:%d:%d\n",sockfd,errno);
 
 printf("size: %u",sizeof(serv_addr));
 int send_status = -2;
-send_status = sendto(sockfd,&buffer,sizeof(buffer),0,(struct sockaddr*)&serv_addr,32);
+for (int i = 0; i <400;i++){
+send_status = sendto(sockfd,&buffer,sizeof(buffer),0,(struct sockaddr*)&serv_addr,32);}
 
 
 //bool send_status = send(sockfd,buffer,sizeof(buffer),NULL);
