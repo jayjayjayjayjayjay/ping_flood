@@ -107,6 +107,9 @@ int main(int argc, char *argv[]) {
   while (1) {
     send_status = sendto(sockfd, buffer, payload_size + PACKET_MIN_LENGTH, 0,
                          (struct sockaddr *)&serv_addr, 32);
+
+    // TODO check if errno is same across mac osx and linux
+    // TODO Some errors can be ignored but need to write logic for that
     if (send_status < 0) {
       printf("Error with Sending to Socket:%d:%d\n", send_status, errno);
       return 1u;
