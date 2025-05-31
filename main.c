@@ -34,10 +34,9 @@ void u32_to_bytes(uint8_t *bytes, uint32_t value) {
 }
 
 void create_packet_buffer(uint8_t *buffer, size_t buffer_size) {
+  // As buffer is initalised with all zeros
+  // We only need to assign some of the values
   buffer[ICMP_TYPE_INDEX] = 0x08;
-  buffer[ICMP_CODE_INDEX] = 0x00;
-  buffer[ICMP_CHECKSUM_INDEX] = 0;
-  buffer[ICMP_CHECKSUM_INDEX + 1] = 0;
   uint16_t checksum_result = calculate_checksum(buffer, buffer_size);
   buffer[ICMP_CHECKSUM_INDEX] = checksum_result >> 8;
   buffer[ICMP_CHECKSUM_INDEX + 1] = checksum_result;
@@ -83,7 +82,7 @@ int main(int argc, char *argv[]) {
     return 1u;
   }
 
-  uint8_t buffer[PACKET_MAX_LENGTH] = {0};
+  uint8_t buffer[PACKET_MAX_LENGTH] = { 0 };
   create_packet_buffer(buffer, payload_size + PACKET_MIN_LENGTH);
 
   uint16_t port = 0;
